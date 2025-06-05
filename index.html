@@ -11,7 +11,65 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
+  <!-- Auth Container -->
+  <div id="authContainer" class="auth-container">
+    <div class="auth-box">
+      <div class="auth-header">
+        <div class="logo">
+          <i class="fas fa-book"></i>
+          <h1>NotesApp</h1>
+        </div>
+        <p class="auth-subtitle">Suas anotações em qualquer lugar</p>
+      </div>
+      
+      <!-- Login Form -->
+      <div id="loginForm" class="auth-form">
+        <h2>Entrar</h2>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Senha</label>
+          <input type="password" id="loginPassword" placeholder="Sua senha">
+        </div>
+        <div class="auth-actions">
+          <button id="loginBtn" class="btn primary">Entrar</button>
+        </div>
+        <p class="auth-toggle">
+          Não tem uma conta? <a href="#" id="showRegister">Registrar</a>
+        </p>
+        <div id="loginError" class="auth-error"></div>
+      </div>
+      
+      <!-- Register Form -->
+      <div id="registerForm" class="auth-form" style="display: none;">
+        <h2>Criar Conta</h2>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Senha</label>
+          <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirmar Senha</label>
+          <input type="password" id="confirmPassword" placeholder="Confirme sua senha">
+        </div>
+        <div class="auth-actions">
+          <button id="registerBtn" class="btn primary">Registrar</button>
+        </div>
+        <p class="auth-toggle">
+          Já tem uma conta? <a href="#" id="showLogin">Entrar</a>
+        </p>
+        <div id="registerError" class="auth-error"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Container (Hidden until authenticated) -->
+  <div id="appContainer" class="app-container" style="display: none;">
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -25,6 +83,13 @@
       </div>
       
       <div class="sidebar-content">
+        <div class="user-info">
+          <span id="userEmail">usuario@email.com</span>
+          <button id="logoutBtn" class="btn-link">
+            <i class="fas fa-sign-out-alt"></i> Sair
+          </button>
+        </div>
+        
         <div class="search-container">
           <input type="text" id="searchInput" placeholder="Pesquisar...">
           <i class="fas fa-search"></i>
@@ -67,6 +132,9 @@
           <span id="noteCount" class="note-count">0 notas</span>
         </div>
         <div class="header-right">
+          <div id="syncStatus" class="sync-status">
+            <i class="fas fa-check-circle"></i> Sincronizado
+          </div>
           <button id="themeToggle" class="theme-toggle">
             <i class="fas fa-moon"></i>
           </button>
@@ -194,6 +262,15 @@ $ ls -la"></textarea>
     </div>
   </div>
 
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <!-- Firebase Auth -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <script src="firebase-config.js"></script>
+  <script src="auth.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

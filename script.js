@@ -26,15 +26,19 @@ document.addEventListener('DOMContentLoaded', function() {
   const exportBtn = document.getElementById('exportBtn');
   const importFileInput = document.getElementById('importFile');
   const copyCodeBtn = document.getElementById('copyCodeBtn');
+  const syncStatus = document.getElementById('syncStatus');
   
   // State
-  let notes = JSON.parse(localStorage.getItem('notesData')) || [];
-  let categories = JSON.parse(localStorage.getItem('notesCategories')) || ['commands', 'concepts', 'tutorials', 'tips'];
-  let categoryColors = JSON.parse(localStorage.getItem('notesCategoryColors')) || {};
+  let notes = [];
+  let categories = ['commands', 'concepts', 'tutorials', 'tips'];
+  let categoryColors = {};
   let currentCategory = 'all';
   let currentNoteId = null;
   let deleteNoteId = null;
   let deleteCategoryName = null;
+  let currentUserId = null;
+  let unsubscribeNotes = null;
+  let unsubscribeCategories = null;
   
   // Default category colors
   const defaultColors = {
@@ -60,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
     '#ff5722'  // Deep Orange
   ];
   
-  // Initialize
-  initializeApp();
+  // Make initializeApp function available globally for auth.js
+  window.initializeApp = initializeUserData;
   
   // Event Listeners
   toggleSidebarBtn.addEventListener('click', toggleSidebar);
@@ -83,16 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
   copyCodeBtn.addEventListener('click', copyCodeToClipboard);
   
   // Functions
-  function initializeApp() {
-    // Initialize category colors if not set
-    categories.forEach(category => {
-      if (!categoryColors[category]) {
-        categoryColors[category] = defaultColors[category] || getRandomColor();
-      }
-    });
-    
-    // Save category colors
-    localStorage.setItem('notesCategoryColors', JSON.stringify(categoryColors));
+  function initializeUserData(userId) {
+    currentUserId = userId;
     
     // Check for saved theme preference
     if (localStorage.getItem('theme') === 'dark') {
@@ -100,28 +96,135 @@ document.addEventListener('DOMContentLoaded', function() {
       themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
     }
     
-    // Update app title
-    const appTitle = document.querySelector('.logo h1');
-    if (appTitle) {
-      appTitle.textContent = 'NotesApp';
-    }
+    // Load user data from Firestore
+    loadUserData();
+  }
+  
+  function loadUserData() {
+    // Show loading state
+    updateSyncStatus('loading');
     
-    // Initialize categories
-    updateCategoryList();
+    // Load categories
+    loadCategories();
     
     // Load notes
-    renderNotes();
+    loadNotes();
+  }
+  
+  function loadCategories() {
+    // Unsubscribe from previous listener if exists
+    if (unsubscribeCategories) {
+      unsubscribeCategories();
+    }
     
-    // Add click event to category items
-    document.querySelectorAll('#categoryList li').forEach(item => {
-      item.addEventListener('click', function(e) {
-        // If clicked on delete button, don't filter
-        if (e.target.classList.contains('category-delete')) {
-          return;
+    // Subscribe to categories collection
+    unsubscribeCategories = db.collection('users').doc(currentUserId).collection('categories')
+      .doc('default')
+      .onSnapshot((doc) => {
+        if (doc.exists && doc.data().list) {
+          categories = doc.data().list;
+          
+          // Load category colors
+          loadCategoryColors();
+          
+          // Update category list in UI
+          updateCategoryList();
+        } else {
+          // Create default categories if not exist
+          db.collection('users').doc(currentUserId).collection('categories')
+            .doc('default')
+            .set({
+              list: ['commands', 'concepts', 'tutorials', 'tips']
+            });
         }
-        filterByCategory(this.dataset.category);
+      }, (error) => {
+        console.error('Error loading categories:', error);
+        showToast('Erro ao carregar categorias.', 'error');
+        updateSyncStatus('error');
       });
-    });
+  }
+  
+  function loadCategoryColors() {
+    db.collection('users').doc(currentUserId).collection('categoryColors')
+      .doc('colors')
+      .get()
+      .then((doc) => {
+        if (doc.exists) {
+          categoryColors = doc.data();
+        } else {
+          // Initialize default colors
+          categoryColors = {};
+          categories.forEach(category => {
+            categoryColors[category] = defaultColors[category] || getRandomColor();
+          });
+          
+          // Save to Firestore
+          saveCategoryColors();
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading category colors:', error);
+      });
+  }
+  
+  function saveCategoryColors() {
+    db.collection('users').doc(currentUserId).collection('categoryColors')
+      .doc('colors')
+      .set(categoryColors)
+      .catch((error) => {
+        console.error('Error saving category colors:', error);
+      });
+  }
+  
+  function loadNotes() {
+    // Unsubscribe from previous listener if exists
+    if (unsubscribeNotes) {
+      unsubscribeNotes();
+    }
+    
+    // Subscribe to notes collection
+    unsubscribeNotes = db.collection('users').doc(currentUserId).collection('notes')
+      .orderBy('updatedAt', 'desc')
+      .onSnapshot((snapshot) => {
+        notes = [];
+        snapshot.forEach((doc) => {
+          const note = doc.data();
+          note.id = doc.id;
+          notes.push(note);
+        });
+        
+        // Update UI
+        renderNotes();
+        updateSyncStatus('synced');
+      }, (error) => {
+        console.error('Error loading notes:', error);
+        showToast('Erro ao carregar notas.', 'error');
+        updateSyncStatus('error');
+      });
+  }
+  
+  function updateSyncStatus(status) {
+    switch (status) {
+      case 'loading':
+        syncStatus.innerHTML = '<i class="fas fa-sync fa-spin"></i> Carregando...';
+        syncStatus.className = 'sync-status loading';
+        break;
+      case 'syncing':
+        syncStatus.innerHTML = '<i class="fas fa-sync fa-spin"></i> Sincronizando...';
+        syncStatus.className = 'sync-status syncing';
+        break;
+      case 'synced':
+        syncStatus.innerHTML = '<i class="fas fa-check-circle"></i> Sincronizado';
+        syncStatus.className = 'sync-status synced';
+        break;
+      case 'error':
+        syncStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Erro de sincronização';
+        syncStatus.className = 'sync-status error';
+        break;
+      default:
+        syncStatus.innerHTML = '<i class="fas fa-check-circle"></i> Sincronizado';
+        syncStatus.className = 'sync-status synced';
+    }
   }
   
   function toggleSidebar() {
@@ -184,44 +287,51 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
-    const timestamp = new Date().toISOString();
+    // Show syncing status
+    updateSyncStatus('syncing');
+    
+    const timestamp = firebase.firestore.FieldValue.serverTimestamp();
     
     if (currentNoteId !== null) {
       // Edit existing note
-      const noteIndex = notes.findIndex(note => note.id === currentNoteId);
-      if (noteIndex !== -1) {
-        notes[noteIndex] = {
-          ...notes[noteIndex],
+      db.collection('users').doc(currentUserId).collection('notes').doc(currentNoteId)
+        .update({
           title,
           category,
           content,
           code,
           updatedAt: timestamp
-        };
-        showToast('Nota atualizada com sucesso!');
-      }
+        })
+        .then(() => {
+          showToast('Nota atualizada com sucesso!');
+          closeNoteModal();
+        })
+        .catch((error) => {
+          console.error('Error updating note:', error);
+          showToast('Erro ao atualizar nota.', 'error');
+          updateSyncStatus('error');
+        });
     } else {
       // Add new note
-      const newNote = {
-        id: generateId(),
-        title,
-        category,
-        content,
-        code,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      };
-      
-      notes.unshift(newNote);
-      showToast('Nota adicionada com sucesso!');
+      db.collection('users').doc(currentUserId).collection('notes')
+        .add({
+          title,
+          category,
+          content,
+          code,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        })
+        .then(() => {
+          showToast('Nota adicionada com sucesso!');
+          closeNoteModal();
+        })
+        .catch((error) => {
+          console.error('Error adding note:', error);
+          showToast('Erro ao adicionar nota.', 'error');
+          updateSyncStatus('error');
+        });
     }
-    
-    // Save to localStorage
-    saveToLocalStorage();
-    
-    // Close modal and render notes
-    closeNoteModal();
-    renderNotes();
   }
   
   function renderNotes() {
@@ -270,8 +380,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const categoryColor = categoryColors[note.category] || getRandomColor();
       noteCard.style.setProperty('--category-color', categoryColor);
       
-      const date = new Date(note.updatedAt);
-      const formattedDate = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+      // Format date
+      let formattedDate = 'Carregando...';
+      if (note.updatedAt && note.updatedAt.toDate) {
+        const date = note.updatedAt.toDate();
+        formattedDate = `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+      }
       
       noteCard.innerHTML = `
         <h3>${escapeHTML(note.title)}</h3>
@@ -315,8 +429,13 @@ document.addEventListener('DOMContentLoaded', function() {
     categoryElement.style.backgroundColor = getCategoryBgColor(note.category);
     categoryElement.style.color = getCategoryTextColor(note.category);
     
-    const date = new Date(note.updatedAt);
-    document.getElementById('viewNoteDate').textContent = `Atualizado em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+    // Format date
+    let formattedDate = 'Carregando...';
+    if (note.updatedAt && note.updatedAt.toDate) {
+      const date = note.updatedAt.toDate();
+      formattedDate = `Atualizado em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+    }
+    document.getElementById('viewNoteDate').textContent = formattedDate;
     
     document.getElementById('viewNoteContent').textContent = note.content;
     
@@ -409,44 +528,68 @@ document.addEventListener('DOMContentLoaded', function() {
   function deleteNote() {
     if (!deleteNoteId) return;
     
-    notes = notes.filter(note => note.id !== deleteNoteId);
-    saveToLocalStorage();
-    renderNotes();
+    // Show syncing status
+    updateSyncStatus('syncing');
     
-    closeConfirmationModal();
-    closeViewNoteModal();
-    showToast('Nota excluída com sucesso!');
+    db.collection('users').doc(currentUserId).collection('notes').doc(deleteNoteId)
+      .delete()
+      .then(() => {
+        closeConfirmationModal();
+        closeViewNoteModal();
+        showToast('Nota excluída com sucesso!');
+      })
+      .catch((error) => {
+        console.error('Error deleting note:', error);
+        showToast('Erro ao excluir nota.', 'error');
+        updateSyncStatus('error');
+      });
   }
   
   function deleteCategory() {
     if (!deleteCategoryName || deleteCategoryName === 'all') return;
     
-    // Move notes from this category to default category
+    // Show syncing status
+    updateSyncStatus('syncing');
+    
+    // Get default category
     const defaultCategory = categories[0] || 'general';
-    notes = notes.map(note => {
-      if (note.category === deleteCategoryName) {
-        return { ...note, category: defaultCategory };
-      }
-      return note;
-    });
     
-    // Remove category
-    categories = categories.filter(cat => cat !== deleteCategoryName);
+    // Update all notes in this category
+    const batch = db.batch();
     
-    // Remove category color
-    delete categoryColors[deleteCategoryName];
-    
-    // Save changes
-    localStorage.setItem('notesCategories', JSON.stringify(categories));
-    localStorage.setItem('notesCategoryColors', JSON.stringify(categoryColors));
-    saveToLocalStorage();
-    
-    // Update UI
-    updateCategoryList();
-    renderNotes();
-    
-    closeConfirmationModal();
-    showToast(`Categoria "${capitalizeFirstLetter(deleteCategoryName)}" excluída com sucesso!`);
+    // Get all notes in this category
+    db.collection('users').doc(currentUserId).collection('notes')
+      .where('category', '==', deleteCategoryName)
+      .get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+          batch.update(doc.ref, { category: defaultCategory });
+        });
+        
+        // Remove category from list
+        const updatedCategories = categories.filter(cat => cat !== deleteCategoryName);
+        
+        // Update categories in Firestore
+        batch.update(db.collection('users').doc(currentUserId).collection('categories').doc('default'), {
+          list: updatedCategories
+        });
+        
+        // Commit batch
+        return batch.commit();
+      })
+      .then(() => {
+        // Remove category color
+        delete categoryColors[deleteCategoryName];
+        saveCategoryColors();
+        
+        closeConfirmationModal();
+        showToast(`Categoria "${capitalizeFirstLetter(deleteCategoryName)}" excluída com sucesso!`);
+      })
+      .catch((error) => {
+        console.error('Error deleting category:', error);
+        showToast('Erro ao excluir categoria.', 'error');
+        updateSyncStatus('error');
+      });
   }
   
   function closeConfirmationModal() {
@@ -468,19 +611,30 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
+    // Show syncing status
+    updateSyncStatus('syncing');
+    
     // Add new category
-    categories.push(newCategory);
+    const updatedCategories = [...categories, newCategory];
     
-    // Assign a color to the new category
-    categoryColors[newCategory] = getRandomColor();
-    
-    // Save categories and colors
-    localStorage.setItem('notesCategories', JSON.stringify(categories));
-    localStorage.setItem('notesCategoryColors', JSON.stringify(categoryColors));
-    
-    updateCategoryList();
-    newCategoryInput.value = '';
-    showToast('Categoria adicionada com sucesso!');
+    // Update categories in Firestore
+    db.collection('users').doc(currentUserId).collection('categories').doc('default')
+      .update({
+        list: updatedCategories
+      })
+      .then(() => {
+        // Assign a color to the new category
+        categoryColors[newCategory] = getRandomColor();
+        saveCategoryColors();
+        
+        newCategoryInput.value = '';
+        showToast('Categoria adicionada com sucesso!');
+      })
+      .catch((error) => {
+        console.error('Error adding category:', error);
+        showToast('Erro ao adicionar categoria.', 'error');
+        updateSyncStatus('error');
+      });
   }
   
   function updateCategoryList() {
@@ -497,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
       categoryName.textContent = capitalizeFirstLetter(category);
       categoryName.className = 'category-name';
       
-      // Create delete button (except for default categories if needed)
+      // Create delete button
       const deleteBtn = document.createElement('span');
       deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
       deleteBtn.className = 'category-delete';
@@ -551,7 +705,11 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function exportNotes() {
     const data = {
-      notes,
+      notes: notes.map(note => ({
+        ...note,
+        createdAt: note.createdAt ? note.createdAt.toDate().toISOString() : new Date().toISOString(),
+        updatedAt: note.updatedAt ? note.updatedAt.toDate().toISOString() : new Date().toISOString()
+      })),
       categories,
       categoryColors
     };
@@ -586,25 +744,20 @@ document.addEventListener('DOMContentLoaded', function() {
           confirmModal.classList.add('active');
           
           confirmActionBtn.onclick = function() {
-            notes = data.notes;
-            categories = data.categories;
-            categoryColors = data.categoryColors || {};
+            // Show syncing status
+            updateSyncStatus('syncing');
             
-            // Ensure all categories have colors
-            categories.forEach(category => {
-              if (!categoryColors[category]) {
-                categoryColors[category] = getRandomColor();
-              }
-            });
-            
-            saveToLocalStorage();
-            localStorage.setItem('notesCategories', JSON.stringify(categories));
-            localStorage.setItem('notesCategoryColors', JSON.stringify(categoryColors));
-            
-            updateCategoryList();
-            renderNotes();
-            closeConfirmationModal();
-            showToast('Dados importados com sucesso!');
+            // Import data to Firestore
+            importDataToFirestore(data)
+              .then(() => {
+                closeConfirmationModal();
+                showToast('Dados importados com sucesso!');
+              })
+              .catch((error) => {
+                console.error('Error importing data:', error);
+                showToast('Erro ao importar dados.', 'error');
+                updateSyncStatus('error');
+              });
           };
         } else {
           showToast('Formato de arquivo inválido.', 'error');
@@ -618,6 +771,42 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     reader.readAsText(file);
+  }
+  
+  async function importDataToFirestore(data) {
+    // Create batch
+    const batch = db.batch();
+    
+    // Delete all existing notes
+    const notesSnapshot = await db.collection('users').doc(currentUserId).collection('notes').get();
+    notesSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    // Add imported notes
+    for (const note of data.notes) {
+      const noteRef = db.collection('users').doc(currentUserId).collection('notes').doc();
+      batch.set(noteRef, {
+        title: note.title,
+        category: note.category,
+        content: note.content,
+        code: note.code || '',
+        createdAt: firebase.firestore.Timestamp.fromDate(new Date(note.createdAt)),
+        updatedAt: firebase.firestore.Timestamp.fromDate(new Date(note.updatedAt))
+      });
+    }
+    
+    // Update categories
+    batch.set(db.collection('users').doc(currentUserId).collection('categories').doc('default'), {
+      list: data.categories
+    });
+    
+    // Update category colors
+    batch.set(db.collection('users').doc(currentUserId).collection('categoryColors').doc('colors'), 
+      data.categoryColors || {});
+    
+    // Commit batch
+    return batch.commit();
   }
   
   function copyCodeToClipboard() {
@@ -652,19 +841,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
   
-  function saveToLocalStorage() {
-    localStorage.setItem('notesData', JSON.stringify(notes));
-  }
-  
-  function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-  }
-  
   function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
   
   function escapeHTML(str) {
+    if (!str) return '';
     return str.replace(/[&<>'"]/g, 
       tag => ({
         '&': '&amp;',
@@ -677,42 +859,5 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function getRandomColor() {
     return availableColors[Math.floor(Math.random() * availableColors.length)];
-  }
-  
-  // Add some sample notes if none exist
-  if (notes.length === 0) {
-    const sampleNotes = [
-      {
-        id: generateId(),
-        title: 'Comandos Básicos do Terminal',
-        category: 'commands',
-        content: 'Lista dos comandos mais úteis e frequentemente usados no terminal Linux para iniciantes.',
-        code: '# Navegação\nls -la    # Listar arquivos (incluindo ocultos)\ncd /path  # Mudar diretório\npwd       # Mostrar diretório atual\n\n# Manipulação de arquivos\ncp origem destino  # Copiar\nmv origem destino  # Mover/renomear\nrm arquivo         # Remover arquivo\nrm -rf diretório   # Remover diretório recursivamente\n\n# Permissões\nchmod +x arquivo   # Tornar arquivo executável\nchown user:group arquivo  # Mudar proprietário',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: generateId(),
-        title: 'Conceito de Permissões no Linux',
-        category: 'concepts',
-        content: 'O sistema de permissões do Linux é baseado em três tipos de acesso: leitura (r), escrita (w) e execução (x). Estas permissões são definidas para três categorias de usuários: proprietário, grupo e outros. Entender este sistema é fundamental para gerenciar a segurança em sistemas Linux.',
-        code: '# Representação numérica de permissões\n# r = 4, w = 2, x = 1\n\nchmod 755 arquivo  # rwxr-xr-x\nchmod 644 arquivo  # rw-r--r--\nchmod 600 arquivo  # rw-------',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        id: generateId(),
-        title: 'Como instalar e gerenciar pacotes com APT',
-        category: 'tutorials',
-        content: 'O APT (Advanced Package Tool) é o gerenciador de pacotes usado em distribuições baseadas em Debian, como Ubuntu. Este tutorial explica como usar o APT para instalar, atualizar e remover pacotes de software.',
-        code: '# Atualizar lista de pacotes\nsudo apt update\n\n# Atualizar todos os pacotes\nsudo apt upgrade\n\n# Instalar um pacote\nsudo apt install nome-do-pacote\n\n# Remover um pacote\nsudo apt remove nome-do-pacote\n\n# Remover pacote e configurações\nsudo apt purge nome-do-pacote\n\n# Procurar por pacotes\napt search termo-de-busca',
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 172800000).toISOString()
-      }
-    ];
-    
-    notes = sampleNotes;
-    saveToLocalStorage();
-    renderNotes();
   }
 });

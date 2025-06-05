@@ -89,6 +89,101 @@ body {
   overflow-x: hidden;
 }
 
+/* Auth Styles */
+.auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background-color: var(--bg-color);
+  background-image: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 188, 212, 0.1) 100%);
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 400px;
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.auth-header {
+  padding: 2rem;
+  text-align: center;
+  background-color: var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.auth-header .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-header .logo i {
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+.auth-header .logo h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.auth-subtitle {
+  color: var(--text-light);
+  font-size: 1rem;
+}
+
+.auth-form {
+  padding: 2rem;
+}
+
+.auth-form h2 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.auth-actions {
+  margin-top: 1.5rem;
+}
+
+.auth-actions .btn {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1rem;
+}
+
+.auth-toggle {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+.auth-toggle a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-toggle a:hover {
+  text-decoration: underline;
+}
+
+.auth-error {
+  margin-top: 1rem;
+  color: var(--danger-color);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* App Container */
 .app-container {
   display: flex;
   min-height: 100vh;
@@ -167,6 +262,43 @@ body {
   pointer-events: none;
 }
 
+.user-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background-color: var(--gray-100);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.user-info #userEmail {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-link:hover {
+  background-color: var(--gray-200);
+}
+
 .search-container {
   position: relative;
   margin-bottom: 1.5rem;
@@ -230,6 +362,18 @@ body {
   justify-content: space-between;
 }
 
+.categories li .category-name {
+  flex: 1;
+  margin-left: 0.5rem;
+}
+
+.categories li .category-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .categories li:hover {
   background-color: var(--gray-100);
 }
@@ -253,6 +397,12 @@ body {
   transition: var(--transition);
   color: var(--text-lighter);
   font-size: 0.8rem;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .categories li:hover .category-delete {
@@ -261,6 +411,7 @@ body {
 
 .category-delete:hover {
   color: var(--danger-color);
+  background-color: rgba(244, 67, 54, 0.1);
 }
 
 .add-category {
@@ -405,6 +556,37 @@ body {
   gap: 1rem;
 }
 
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius);
+  background-color: var(--gray-100);
+}
+
+.dark-mode .sync-status {
+  background-color: var(--gray-200);
+}
+
+.sync-status.synced {
+  color: #4caf50;
+}
+
+.sync-status.syncing {
+  color: #ff9800;
+}
+
+.sync-status.error {
+  color: #f44336;
+}
+
+.sync-status.loading {
+  color: #2196f3;
+}
+
 .theme-toggle {
   background: none;
   border: none;
@@ -453,24 +635,7 @@ body {
   left: 0;
   width: 4px;
   height: 100%;
-  background-color: var(--primary-color);
-}
-
-/* Dynamic category colors - will be handled by JavaScript */
-.note-card[data-category="commands"]::before {
-  background-color: var(--primary-color);
-}
-
-.note-card[data-category="concepts"]::before {
-  background-color: var(--secondary-color);
-}
-
-.note-card[data-category="tutorials"]::before {
-  background-color: var(--accent-color);
-}
-
-.note-card[data-category="tips"]::before {
-  background-color: #9c27b0;
+  background-color: var(--category-color, var(--primary-color));
 }
 
 .note-card h3 {
@@ -505,47 +670,6 @@ body {
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 500;
-}
-
-/* Dynamic category colors - will be handled by JavaScript */
-.note-card[data-category="commands"] .note-category {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: var(--primary-color);
-}
-
-.dark-mode .note-card[data-category="commands"] .note-category {
-  background-color: rgba(124, 77, 255, 0.2);
-  color: var(--primary-light);
-}
-
-.note-card[data-category="concepts"] .note-category {
-  background-color: rgba(33, 150, 243, 0.1);
-  color: var(--secondary-color);
-}
-
-.dark-mode .note-card[data-category="concepts"] .note-category {
-  background-color: rgba(0, 188, 212, 0.2);
-  color: var(--secondary-color);
-}
-
-.note-card[data-category="tutorials"] .note-category {
-  background-color: rgba(255, 152, 0, 0.1);
-  color: var(--accent-color);
-}
-
-.dark-mode .note-card[data-category="tutorials"] .note-category {
-  background-color: rgba(255, 64, 129, 0.2);
-  color: var(--accent-color);
-}
-
-.note-card[data-category="tips"] .note-category {
-  background-color: rgba(156, 39, 176, 0.1);
-  color: #9c27b0;
-}
-
-.dark-mode .note-card[data-category="tips"] .note-category {
-  background-color: rgba(156, 39, 176, 0.2);
-  color: #ce93d8;
 }
 
 .empty-state {
@@ -720,47 +844,6 @@ body {
   padding: 0.2rem 0.8rem;
   border-radius: var(--radius-sm);
   font-weight: 500;
-}
-
-/* Dynamic category colors - will be handled by JavaScript */
-.note-category[data-category="commands"] {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: var(--primary-color);
-}
-
-.dark-mode .note-category[data-category="commands"] {
-  background-color: rgba(124, 77, 255, 0.2);
-  color: var(--primary-light);
-}
-
-.note-category[data-category="concepts"] {
-  background-color: rgba(33, 150, 243, 0.1);
-  color: var(--secondary-color);
-}
-
-.dark-mode .note-category[data-category="concepts"] {
-  background-color: rgba(0, 188, 212, 0.2);
-  color: var(--secondary-color);
-}
-
-.note-category[data-category="tutorials"] {
-  background-color: rgba(255, 152, 0, 0.1);
-  color: var(--accent-color);
-}
-
-.dark-mode .note-category[data-category="tutorials"] {
-  background-color: rgba(255, 64, 129, 0.2);
-  color: var(--accent-color);
-}
-
-.note-category[data-category="tips"] {
-  background-color: rgba(156, 39, 176, 0.1);
-  color: #9c27b0;
-}
-
-.dark-mode .note-category[data-category="tips"] {
-  background-color: rgba(156, 39, 176, 0.2);
-  color: #ce93d8;
 }
 
 .note-date {
