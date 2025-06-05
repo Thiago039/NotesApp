@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotesApp - Suas anotações organizadas</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-book"></i>
+          <h1>NotesApp</h1>
+        </div>
+        <button id="toggleSidebar" class="toggle-sidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <div class="sidebar-content">
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Pesquisar...">
+          <i class="fas fa-search"></i>
+        </div>
+        
+        <nav class="categories">
+          <h3>Categorias</h3>
+          <ul id="categoryList">
+            <li data-category="all" class="active">Todas as Notas</li>
+            <li data-category="commands">Comandos</li>
+            <li data-category="concepts">Conceitos</li>
+            <li data-category="tutorials">Tutoriais</li>
+            <li data-category="tips">Dicas</li>
+          </ul>
+          <div class="add-category">
+            <input type="text" id="newCategoryInput" placeholder="Nova categoria...">
+            <button id="addCategoryBtn">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </nav>
+        
+        <div class="data-controls">
+          <button id="exportBtn" class="btn">
+            <i class="fas fa-file-export"></i> Exportar Dados
+          </button>
+          <label for="importFile" class="btn import-btn">
+            <i class="fas fa-file-import"></i> Importar Dados
+          </label>
+          <input type="file" id="importFile" accept=".json" hidden>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <h2 id="currentCategory">Todas as Notas</h2>
+          <span id="noteCount" class="note-count">0 notas</span>
+        </div>
+        <div class="header-right">
+          <button id="themeToggle" class="theme-toggle">
+            <i class="fas fa-moon"></i>
+          </button>
+          <button id="addNoteBtn" class="btn primary">
+            <i class="fas fa-plus"></i> Nova Nota
+          </button>
+        </div>
+      </header>
+
+      <div id="notesContainer" class="notes-container">
+        <!-- Notes will be added here dynamically -->
+        <div class="empty-state">
+          <i class="fas fa-book-open"></i>
+          <p>Nenhuma nota encontrada. Crie uma nova nota para começar!</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Note Editor Modal -->
+    <div id="noteModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">Nova Nota</h3>
+          <button id="closeModal" class="close-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="noteTitle">Título</label>
+            <input type="text" id="noteTitle" placeholder="Título da nota">
+          </div>
+          <div class="form-group">
+            <label for="noteCategory">Categoria</label>
+            <select id="noteCategory">
+              <option value="commands">Comandos</option>
+              <option value="concepts">Conceitos</option>
+              <option value="tutorials">Tutoriais</option>
+              <option value="tips">Dicas</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="noteContent">Conteúdo</label>
+            <textarea id="noteContent" placeholder="Digite o conteúdo da sua nota aqui..."></textarea>
+          </div>
+          <div class="form-group code-block">
+            <label for="noteCode">Bloco de Código (opcional)</label>
+            <textarea id="noteCode" placeholder="# Exemplo de código ou comando
+$ ls -la"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelNote" class="btn">Cancelar</button>
+          <button id="saveNote" class="btn primary">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note View Modal -->
+    <div id="viewNoteModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="viewNoteTitle">Título da Nota</h3>
+          <div class="modal-actions">
+            <button id="editNoteBtn" class="action-btn">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button id="deleteNoteBtn" class="action-btn">
+              <i class="fas fa-trash"></i>
+            </button>
+            <button id="closeViewModal" class="close-btn">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="note-metadata">
+            <span id="viewNoteCategory" class="note-category">Categoria</span>
+            <span id="viewNoteDate" class="note-date">Data</span>
+          </div>
+          <div id="viewNoteContent" class="note-content">
+            <!-- Note content will be displayed here -->
+          </div>
+          <div id="viewNoteCodeContainer" class="code-container">
+            <div class="code-header">
+              <span>Código</span>
+              <button id="copyCodeBtn" class="copy-btn">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <pre><code id="viewNoteCode"></code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+      <div class="modal-content confirm-modal">
+        <div class="modal-header">
+          <h3>Confirmação</h3>
+          <button id="closeConfirmModal" class="close-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmMessage">Tem certeza que deseja excluir esta nota?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelAction" class="btn">Cancelar</button>
+          <button id="confirmAction" class="btn danger">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+      <div class="toast-content">
+        <i id="toastIcon" class="fas fa-check-circle"></i>
+        <div class="toast-message">
+          <span id="toastMessage">Operação realizada com sucesso!</span>
+        </div>
+      </div>
+      <div class="toast-progress"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
